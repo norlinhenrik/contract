@@ -55,11 +55,12 @@ class Contract(models.Model):
     @api.multi
     def _recurring_create_invoice(self, date_ref=False):
         """ If automatic payment is enabled, perform auto pay actions. """
-        invoice = super(Contract, self)._recurring_create_invoice(date_ref)
-        if not self.is_auto_pay:
-            return invoice
-        self._do_auto_pay(invoice)
-        return invoice
+        invoices = super(Contract, self)._recurring_create_invoice(date_ref)
+        for invoice in invoices:
+            contract = invoice.invoice_line_ids[0].contract_line_id.contract_id
+            if contract.is_auto_pay:
+                contract._do_auto_pay(invoice)
+        return invoices
 
     @api.multi
     def _do_auto_pay(self, invoice):
@@ -136,7 +137,7 @@ class Contract(models.Model):
 
     @api.multi
     def _get_tx_vals(self, invoice, token):
-        """ Return values for create of payment.transaction for invoice."""
+        """ Return values for creation of a payment.transaction for invoice. """
         amount_due = invoice.residual
         partner = token.partner_id
         reference = self.env['payment.transaction']._compute_reference()
